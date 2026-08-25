@@ -51,7 +51,7 @@
 <body>
 <div class="app">
   <h1>SAR → GBP Comparator</h1>
-  <div class="sub">Compare the live market rate, the direct conversion rate you are actually offered, and your wage-slip preferential rate. The app shows which gives you the most pounds.</div>
+  <div class="sub">See the live market rate for reference, then compare your wage-slip preferential rate directly against Currencies Direct.</div>
   <div id="jsStatus" class="status" style="padding:10px 12px;border:1px solid #593039;border-radius:12px;background:rgba(239,68,68,.08);margin-bottom:12px">JavaScript has not started. Open this web app in Safari.</div>
 
   <div class="card">
@@ -93,13 +93,12 @@
   <div class="card winner" id="winnerCard">
     <div class="pill" id="winnerPill">Enter your rates</div>
     <div class="big" id="winnerTitle">Ready to compare</div>
-    <div id="winnerText" class="sub" style="margin:0">Enter an amount. The direct conversion rate is optional until you have an offer to compare.</div>
+    <div id="winnerText" class="sub" style="margin:0">Enter an amount and your Currencies Direct rate to compare it with your preferential rate.</div>
   </div>
 
   <div class="card">
-    <div class="resultline"><span>Market rate gives you</span><strong id="marketResult">—</strong></div>
-    <div class="resultline"><span>Direct conversion gives you</span><strong id="directResult">—</strong></div>
     <div class="resultline"><span>Preferential rate gives you</span><strong id="prefResult">—</strong></div>
+    <div class="resultline"><span>Currencies Direct gives you</span><strong id="directResult">—</strong></div>
     <div class="resultline"><span>Difference</span><strong id="difference">—</strong></div>
     <div class="resultline"><span>Rate advantage</span><strong id="rateAdvantage">—</strong></div>
   </div>
@@ -109,7 +108,7 @@
       <button type="button" class="primary" id="calcBtn" onclick="window.calculateRates && window.calculateRates()">Compare Rates</button>
       <button type="button" id="clearBtn" onclick="window.clearAmount && window.clearAmount()">Clear Amount</button>
     </div>
-    <p class="note">Market and wage-slip rates use £1 = SAR. The direct conversion box uses 1 SAR = GBP, matching offers such as 0.1939. The app converts the formats automatically for comparison. Live market rates are indicative, so check the final provider rate before transferring.</p>
+    <p class="note">The live market rate is shown for reference only. The final comparison is between your wage-slip preferential rate and the Currencies Direct rate you enter. Preferential uses £1 = SAR; Currencies Direct uses 1 SAR = GBP.</p>
   </div>
 </div>
 
@@ -119,7 +118,7 @@
   const els = {
     amount:$('amount'), marketRate:$('marketRate'), directRate:$('directRate'), prefRate:$('prefRate'), fetchBtn:$('fetchBtn'), liveStatus:$('liveStatus'),
     winnerCard:$('winnerCard'), winnerPill:$('winnerPill'), winnerTitle:$('winnerTitle'), winnerText:$('winnerText'),
-    marketResult:$('marketResult'), directResult:$('directResult'), prefResult:$('prefResult'), difference:$('difference'), rateAdvantage:$('rateAdvantage'),
+    directResult:$('directResult'), prefResult:$('prefResult'), difference:$('difference'), rateAdvantage:$('rateAdvantage'),
     calcBtn:$('calcBtn'), clearBtn:$('clearBtn')
   };
 
@@ -142,32 +141,36 @@
       els.winnerText.textContent='For example, enter 38000 above.';
       return;
     }
-    if(!Number.isFinite(market) || market<=0){
-      els.winnerTitle.textContent='Market rate needed';
-      els.winnerText.textContent='Tap Update Live Rate, or type the current £1 = SAR rate manually.';
-      return;
-    }
     if(!Number.isFinite(pref) || pref<=0){
       els.winnerTitle.textContent='Preferential rate needed';
       els.winnerText.textContent='Enter the £1 = SAR rate from your wage slip.';
       return;
     }
-    const marketOut=amount/market, prefOut=amount/pref;
+    const prefOut=amount/pref;
     const directOut=(Number.isFinite(direct) && direct>0) ? amount*direct : null;
-    els.marketResult.textContent=fmtMoney(marketOut);
-    els.directResult.textContent=directOut===null ? 'Not entered' : fmtMoney(directOut);
+    els.directResult.textContent=directOut===null ? 'Enter rate' : fmtMoney(directOut);
     els.prefResult.textContent=fmtMoney(prefOut);
 
-    const options=[{name:'Market rate',value:marketOut},{name:'Wage-slip rate',value:prefOut}];
-    if(directOut!==null) options.push({name:'Direct conversion',value:directOut});
-    options.sort((a,b)=>b.value-a.value);
-    const best=options[0], second=options[1], diff=best.value-second.value;
+    if(directOut===null){
+      els.difference.textContent='—';
+      els.rateAdvantage.textContent='—';
+      els.winnerPill.textContent='Currencies Direct rate needed';
+      els.winnerPill.className='pill';
+      els.winnerTitle.textContent='Enter Currencies Direct rate';
+      els.winnerText.textContent='Enter the 1 SAR = GBP rate you are being offered.';
+      return;
+    }
+    const prefOption={name:'Preferential rate',value:prefOut};
+    const directOption={name:'Currencies Direct',value:directOut};
+    const best=prefOut>=directOut ? prefOption : directOption;
+    const other=best===prefOption ? directOption : prefOption;
+    const diff=Math.abs(prefOut-directOut);
     els.difference.textContent=fmtMoney(diff);
-    els.rateAdvantage.textContent=((diff/second.value)*100).toFixed(3)+'%';
+    els.rateAdvantage.textContent=other.value>0 ? ((diff/other.value)*100).toFixed(3)+'%' : '—';
     els.winnerPill.textContent=best.name+' wins';
     els.winnerPill.className='pill good';
-    els.winnerTitle.textContent=best.name+' is best';
-    els.winnerText.textContent='You receive '+fmtMoney(diff)+' more than the next-best option.';
+    els.winnerTitle.textContent=best.name+' is better';
+    els.winnerText.textContent='You receive '+fmtMoney(diff)+' more than the other option.';
   }
 
   window.calculateRates = calculate;
