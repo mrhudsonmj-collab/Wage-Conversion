@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0f172a" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Rate Compare" />
+<title>SAR → GBP Rate Comparator</title>
+<style>
+  :root{--bg:#0b1220;--panel:#111827;--panel2:#172033;--text:#f8fafc;--muted:#a7b0c0;--accent:#38bdf8;--good:#22c55e;--bad:#ef4444;--warn:#f59e0b;--line:#2a354a}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif;background:linear-gradient(180deg,#0b1220,#111827 55%,#0b1220);color:var(--text);min-height:100vh;padding:18px}
+  .app{max-width:760px;margin:0 auto}
+  h1{font-size:34px;margin:6px 0 2px;letter-spacing:-.5px}
+  .sub{color:#dbe4f0;font-size:18px;line-height:1.45;margin-bottom:18px}
+  .card{background:rgba(17,24,39,.94);border:1px solid var(--line);border-radius:20px;padding:16px;margin:12px 0;box-shadow:0 12px 28px rgba(0,0,0,.18)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:620px){.grid{grid-template-columns:1fr}}
+  label{display:block;font-size:17px;font-weight:700;color:#eef4fb;margin:0 0 7px}
+  input,select,button{width:100%;font:inherit;border-radius:14px}
+  input,select{background:#f8fafc;color:#111827;border:2px solid #64748b;padding:16px 14px;font-size:20px;font-weight:700;outline:none}
+  input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(56,189,248,.12)}
+  button{border:0;padding:15px 16px;font-size:17px;background:#243047;color:white;font-weight:700;cursor:pointer}
+  button.primary{background:var(--accent);color:#062033}
+  button:active{transform:translateY(1px)}
+  .ratebox{display:flex;gap:10px;align-items:end}
+  .ratebox>div{flex:1}
+  .smallbtn{width:auto;white-space:nowrap;padding:13px 15px}
+  .status{font-size:15px;color:#dbe4f0;line-height:1.4;margin-top:8px;min-height:18px}
+  .winner{border:1px solid #28523a;background:rgba(34,197,94,.09)}
+  .winner.bad{border-color:#593039;background:rgba(239,68,68,.08)}
+  .big{font-size:26px;font-weight:800;letter-spacing:-.4px;margin:2px 0 5px}
+  .resultline{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .resultline:last-child{border-bottom:0}
+  .resultline span:first-child{color:var(--muted)}
+  .resultline strong{text-align:right}
+  .pill{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:800;background:#22324d;color:#cdeafe}
+  .pill.good{background:rgba(34,197,94,.15);color:#91f0ad}
+  .pill.warn{background:rgba(245,158,11,.13);color:#ffd17a}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap}
+  .toolbar button{width:auto;flex:1;min-width:140px}
+  .note{font-size:15px;color:#dbe4f0;line-height:1.45}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:520px){.two{grid-template-columns:1fr}.ratebox{align-items:stretch;flex-direction:column}.smallbtn{width:100%}}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>SAR → GBP Comparator</h1>
+  <div class="sub">Compare the live market rate, the direct conversion rate you are actually offered, and your wage-slip preferential rate. The app shows which gives you the most pounds.</div>
+  <div id="jsStatus" class="status" style="padding:10px 12px;border:1px solid #593039;border-radius:12px;background:rgba(239,68,68,.08);margin-bottom:12px">JavaScript has not started. Open this web app in Safari.</div>
+
+  <div class="card">
+    <div class="grid">
+      <div>
+        <label for="amount">Amount in Saudi Riyals (SAR)</label>
+        <input id="amount" type="number" step="0.01" inputmode="decimal" placeholder="e.g. 38000" />
+      </div>
+      <div>
+        <label>Conversion</label>
+        <input value="SAR → GBP" disabled />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ratebox">
+      <div>
+        <label id="marketLabel" for="marketRate">Current market rate — £1 = SAR</label>
+        <input id="marketRate" type="number" step="0.000001" inputmode="decimal" placeholder="Tap Update Live Rate" value="5.1205" />
+      </div>
+      <button type="button" class="smallbtn primary" id="fetchBtn" onclick="window.fetchLiveRate && window.fetchLiveRate()">Update Live Rate</button>
+    </div>
+    <div class="status" id="liveStatus">You can also type the current rate manually.</div>
+  </div>
+
+  <div class="card">
+    <label for="directRate">Currencies direct — 1 SAR = GBP</label>
+    <input id="directRate" type="number" step="0.000001" inputmode="decimal" placeholder="e.g. 0.1939" />
+    <div class="status">Enter the actual direct rate shown by your bank, exchange app or website.</div>
+  </div>
+
+  <div class="card">
+    <label id="prefLabel" for="prefRate">Your wage-slip preferential rate — £1 = SAR</label>
+    <input id="prefRate" type="number" step="0.0001" inputmode="decimal" placeholder="e.g. 5.0761" />
+    <div class="status">Saved automatically on this device.</div>
+  </div>
+
+  <div class="card winner" id="winnerCard">
+    <div class="pill" id="winnerPill">Enter your rates</div>
+    <div class="big" id="winnerTitle">Ready to compare</div>
+    <div id="winnerText" class="sub" style="margin:0">Enter an amount. The direct conversion rate is optional until you have an offer to compare.</div>
+  </div>
+
+  <div class="card">
+    <div class="resultline"><span>Market rate gives you</span><strong id="marketResult">—</strong></div>
+    <div class="resultline"><span>Direct conversion gives you</span><strong id="directResult">—</strong></div>
+    <div class="resultline"><span>Preferential rate gives you</span><strong id="prefResult">—</strong></div>
+    <div class="resultline"><span>Difference</span><strong id="difference">—</strong></div>
+    <div class="resultline"><span>Rate advantage</span><strong id="rateAdvantage">—</strong></div>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <button type="button" class="primary" id="calcBtn" onclick="window.calculateRates && window.calculateRates()">Compare Rates</button>
+      <button type="button" id="clearBtn" onclick="window.clearAmount && window.clearAmount()">Clear Amount</button>
+    </div>
+    <p class="note">Market and wage-slip rates use £1 = SAR. The direct conversion box uses 1 SAR = GBP, matching offers such as 0.1939. The app converts the formats automatically for comparison. Live market rates are indicative, so check the final provider rate before transferring.</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const els = {
+    amount:$('amount'), marketRate:$('marketRate'), directRate:$('directRate'), prefRate:$('prefRate'), fetchBtn:$('fetchBtn'), liveStatus:$('liveStatus'),
+    winnerCard:$('winnerCard'), winnerPill:$('winnerPill'), winnerTitle:$('winnerTitle'), winnerText:$('winnerText'),
+    marketResult:$('marketResult'), directResult:$('directResult'), prefResult:$('prefResult'), difference:$('difference'), rateAdvantage:$('rateAdvantage'),
+    calcBtn:$('calcBtn'), clearBtn:$('clearBtn')
+  };
+
+  let stored={};
+  try { stored=JSON.parse(localStorage.getItem('sarGbpComparatorV2')||'{}'); } catch(e) {}
+  if(stored.amount) els.amount.value=stored.amount;
+  if(stored.directRate) els.directRate.value=stored.directRate;
+  if(stored.prefRate) els.prefRate.value=stored.prefRate;
+  else els.prefRate.value='5.0761';
+  if(stored.marketRate) els.marketRate.value=stored.marketRate;
+
+  function fmtMoney(n){ return Number.isFinite(n) ? new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(n) : '—'; }
+  function save(){ try { localStorage.setItem('sarGbpComparatorV2',JSON.stringify({amount:els.amount.value,directRate:els.directRate.value,prefRate:els.prefRate.value,marketRate:els.marketRate.value})); } catch(e) {} }
+
+  function calculate(){
+    save();
+    const amount=parseFloat(els.amount.value), market=parseFloat(els.marketRate.value), direct=parseFloat(els.directRate.value), pref=parseFloat(els.prefRate.value);
+    if(!Number.isFinite(amount) || amount<=0){
+      els.winnerTitle.textContent='Enter your SAR amount';
+      els.winnerText.textContent='For example, enter 38000 above.';
+      return;
+    }
+    if(!Number.isFinite(market) || market<=0){
+      els.winnerTitle.textContent='Market rate needed';
+      els.winnerText.textContent='Tap Update Live Rate, or type the current £1 = SAR rate manually.';
+      return;
+    }
+    if(!Number.isFinite(pref) || pref<=0){
+      els.winnerTitle.textContent='Preferential rate needed';
+      els.winnerText.textContent='Enter the £1 = SAR rate from your wage slip.';
+      return;
+    }
+    const marketOut=amount/market, prefOut=amount/pref;
+    const directOut=(Number.isFinite(direct) && direct>0) ? amount*direct : null;
+    els.marketResult.textContent=fmtMoney(marketOut);
+    els.directResult.textContent=directOut===null ? 'Not entered' : fmtMoney(directOut);
+    els.prefResult.textContent=fmtMoney(prefOut);
+
+    const options=[{name:'Market rate',value:marketOut},{name:'Wage-slip rate',value:prefOut}];
+    if(directOut!==null) options.push({name:'Direct conversion',value:directOut});
+    options.sort((a,b)=>b.value-a.value);
+    const best=options[0], second=options[1], diff=best.value-second.value;
+    els.difference.textContent=fmtMoney(diff);
+    els.rateAdvantage.textContent=((diff/second.value)*100).toFixed(3)+'%';
+    els.winnerPill.textContent=best.name+' wins';
+    els.winnerPill.className='pill good';
+    els.winnerTitle.textContent=best.name+' is best';
+    els.winnerText.textContent='You receive '+fmtMoney(diff)+' more than the next-best option.';
+  }
+
+  window.calculateRates = calculate;
+
+  function withTimeout(url, ms=7000){
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),ms);
+    return fetch(url,{cache:'no-store',mode:'cors',signal:controller.signal}).finally(()=>clearTimeout(timer));
+  }
+
+  async function fetchLive(){
+    els.fetchBtn.disabled=true;
+    els.fetchBtn.textContent='Updating…';
+    els.liveStatus.textContent='Fetching current GBP/SAR rate…';
+    let rate=null, label='';
+
+    // Source 1: jsDelivr-hosted currency API. This is generally the most reliable
+    // option for a locally opened HTML file on iPhone/Safari.
+    try{
+      const res=await withTimeout('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/gbp.json');
+      if(res.ok){
+        const data=await res.json();
+        rate=Number(data && data.gbp && data.gbp.sar);
+        if(Number.isFinite(rate) && rate>0) label='Current rate loaded';
+      }
+    }catch(e){}
+
+    // Source 2 fallback.
+    if(!Number.isFinite(rate)){
+      try{
+        const res=await withTimeout('https://open.er-api.com/v6/latest/GBP');
+        if(res.ok){
+          const data=await res.json();
+          rate=Number(data && data.rates && data.rates.SAR);
+          if(Number.isFinite(rate) && rate>0) label='Current rate loaded';
+        }
+      }catch(e){}
+    }
+
+    // Source 3 fallback using an alternate CDN domain.
+    if(!Number.isFinite(rate)){
+      try{
+        const res=await withTimeout('https://latest.currency-api.pages.dev/v1/currencies/gbp.json');
+        if(res.ok){
+          const data=await res.json();
+          rate=Number(data && data.gbp && data.gbp.sar);
+          if(Number.isFinite(rate) && rate>0) label='Current rate loaded';
+        }
+      }catch(e){}
+    }
+
+    if(Number.isFinite(rate) && rate>0){
+      els.marketRate.value=rate.toFixed(4);
+      const now=new Date();
+      els.liveStatus.textContent=label+': £1 = '+rate.toFixed(4)+' SAR · '+now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      save();
+      calculate();
+    }else{
+      // Keep the latest verified fallback visible rather than leaving the app dead.
+      if(!els.marketRate.value) els.marketRate.value='5.1205';
+      els.liveStatus.innerHTML='Live rate could not be fetched. Enter the current market rate manually and the calculator will still work. <button id="safariHelp" style="margin-top:8px;padding:9px 11px;width:auto">How to fix on iPhone</button>';
+      const h=document.getElementById('safariHelp');
+      if(h) h.onclick=()=>alert('Check your internet connection and refresh the page. The calculator still works with any market rate you type manually.');
+      calculate();
+    }
+    els.fetchBtn.disabled=false;
+    els.fetchBtn.textContent='Update Live Rate';
+  }
+
+  window.fetchLiveRate = fetchLive;
+  window.clearAmount = ()=>{els.amount.value='';save();calculate();els.amount.focus();};
+
+  const jsStatus = document.getElementById('jsStatus');
+  if(jsStatus){
+    jsStatus.textContent='App is active — calculator ready.';
+    jsStatus.style.borderColor='#28523a';
+    jsStatus.style.background='rgba(34,197,94,.09)';
+    jsStatus.style.color='#91f0ad';
+  }
+
+  [els.amount,els.marketRate,els.directRate,els.prefRate].forEach(el=>el.addEventListener('input',calculate));
+  els.clearBtn.addEventListener('click',window.clearAmount);
+  calculate();
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+</script>
+</body>
+</html>
